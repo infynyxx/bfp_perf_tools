@@ -80,13 +80,12 @@ Vagrant.configure("2") do |config|
   # backing providers for Vagrant. These expose provider-specific options.
   # Example for VirtualBox:
   #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "2048"
-  # end
+  config.vm.provider "virtualbox" do |vb|
+    # Customize the amount of memory on the VM:
+    vb.memory = "2048"
+    vb.cpus = 4
+
+  end
   #
   # View the documentation for the provider you are using for more
   # information on available options.
@@ -94,8 +93,47 @@ Vagrant.configure("2") do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  # config.vm.provision "shell", inline: <<-SHELL
-  #   apt-get update
-  #   apt-get install -y apache2
-  # SHELL
+  config.vm.provision "shell", inline: <<-SHELL
+    # https://github.com/iovisor/bcc/blob/v0.15.0/INSTALL.md#centos---source
+    sudo yum install -y epel-release
+    sudo yum update -y
+    sudo yum groupinstall -y "Development tools"
+    sudo yum install -y elfutils-libelf-devel cmake3 git bison flex ncurses-devel
+    # for Lua support
+    sudo yum install -y luajit luajit-devel
+    # python is required for compiling LLVM
+    sudo yum install -y python3
+    sudo alternatives --set python /usr/bin/python3
+
+    curl  -LO  https://releases.llvm.org/7.0.1/llvm-7.0.1.src.tar.xz
+    curl  -LO  https://releases.llvm.org/7.0.1/cfe-7.0.1.src.tar.xz
+
+    tar -xf cfe-7.0.1.src.tar.xz
+    tar -xf llvm-7.0.1.src.tar.xz
+
+    mkdir clang-build
+    mkdir llvm-build
+
+    cd llvm-build
+    cmake3 -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="BPF;X86" \
+      -DCMAKE_BUILD_TYPE=Release ../llvm-7.0.1.src
+    make
+    sudo make install
+
+    cd ../clang-build
+    cmake3 -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="BPF;X86" \
+      -DCMAKE_BUILD_TYPE=Release ../cfe-7.0.1.src
+    make
+    sudo make install
+    cd ..
+
+    # Install and compile BCC
+    git clone https://github.com/iovisor/bcc.git
+    git checkout v0.15.0
+    mkdir bcc/build
+    cd bcc/build
+    cmake3 ..
+    make
+    sudo make install
+  SHELL
 end
