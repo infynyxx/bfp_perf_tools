@@ -135,5 +135,13 @@ Vagrant.configure("2") do |config|
     cmake3 ..
     make
     sudo make install
+
+    # Install BCC
+    # https://github.com/iovisor/bpftrace/blob/master/INSTALL.md#CentOS-package
+    # https://github.com/fbs/el7-bpf-specs/blob/master/README.md#repository
+    sudo curl https://repos.baslab.org/bpftools.repo --output /etc/yum.repos.d/bpftools.repo
+    sudo yum -y install bpftrace-static bpftrace-tools bcc-static bcc-tools --nobest
+    # somehow it's complaining python3 is not best but it does seem to be work
+    # and bpftrace-docs could not be found so, skipping it
   SHELL
 end
